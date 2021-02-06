@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+    <label for="messages"></label><textarea readonly id="messages" cols="100" rows="30"></textarea>
+    <label for="message-input"></label><input id="message-input" type="text" size="100">
+    <input id="message-submit" type="button" value="Send">
+
+    <script>
+        const socket = new WebSocket(
+            'ws://' + window.location.host + '/ws/quiz'
+        );
+
+        socket.onmessage = (e) => {
+            const data = JSON.parse(e.data);
+
+            let out = '';
+            if (data['message_type'] === 'question') {
+                out += '---------\n';
+                out += 'Question: ' + data['question'] + '\n';
+                out += 'Answers:\n';
+
+                const answers = data['answers'];
+                for (let i = 0; i < answers.length; i++) {
+                    out += JSON.stringify(answers[i]) + '\n';
+                }
+
+                out += 'Enter the correct answer_id.\n';
+                out += '-------\n\n';
+            }
+            else if (data['message_type'] === 'results') {
+                out += 'The correct answer ID was ' + JSON.stringify(data['correct_id']) + '\n';
+                out += data['num_correct'] + ' user(s) answered correctly!\n';
+                out += data['num_incorrect'] + ' user(s) answered incorrectly!\n';
+            }
+            else {
+                out = e.data + '\n';
+            }
+
+            document.getElementById('messages').value += out;
+        }
+
+        socket.onclose = () => {
+            document.getElementById('messages').value += 'game socket closed\n';
+        }
+
+        document.getElementById('message-input').focus();
+        document.getElementById('message-input').onkeyup = function(e) {
+            if (e.keyCode === 13) {  // enter, return
+                document.getElementById('message-submit').click();
+            }
+        };
+
+        document.getElementById('message-submit').onclick = function(e) {
+            const messageInputDom = document.getElementById('message-input');
+            const message = messageInputDom.value;
+            socket.send(JSON.stringify({
+                'answer_id': parseInt(message)
+            }));
+            messageInputDom.value = '';
+        };
+    </script>
+</body>
+</html>
